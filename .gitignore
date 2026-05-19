@@ -1,0 +1,49 @@
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Cache files
+.cache/
+
+# Build directories
+build/
+dist/
+bin/
+obj/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+env/
+
+# Java
+*.class
+*.jar
+
+# Node (if using web frontend)
+node_modules/
+package-lock.json
+
+# Local environment files
+.env
+.local
