@@ -58,8 +58,14 @@ Tabela para redação do relatório: **onde colocar**, **o que descrever**, **n�
 | [`hyperparam_heatmap.png`](figures/hyperparam_heatmap.png) | 4 | **Experimentos** (busca de hiperparâmetros) | Heatmap **val acc média (5 seeds)** para grid lr × batch. | Células escuras ≈ >0,95. **lr=0,001** com batch 32/64 fica ~**0,63** (underfitting — platô majoritário). Melhores: lr=0,01 batch=8 (**0,978**), entre outros ≥0,965. |
 | [`architecture_bar_chart.png`](figures/architecture_bar_chart.png) | 4 | **Experimentos** | Barras agrupadas train (vermelho) vs val (teal) para 3 arquiteturas, com SEM (5 seeds). | Val **0,978** igual nas três; treino sobe levemente com rede maior (0,992→0,995). Rede rasa `[30,16,2]` basta — escolhida por parsimônia. |
 | [`hyperparam_training_curves.png`](figures/hyperparam_training_curves.png) | 4 | **Experimentos** ou **Discussão** (fase de latência) | Três painéis: curvas **treino (:)** vs **val (-)** ao longo de 100 épocas para lr, batch (lr=0,01) e arquitetura. | Todas começam ~**0,63** e ficam planas antes de subir (**symmetry-breaking**). Latência: lr=0,1 ~2 ep; lr=0,01 ~18 ep; lr=0,001 nunca sai; batch 8 mais rápido que 64; rede profunda `[30,64,32,2]` ~45 ep. |
-| [`optimizer_training_curves.png`](figures/optimizer_training_curves.png) | 7 | **Extras / Discussão** (He, momentum) | Uma curva: 4 configs (Base, +He, +Momentum, +He+Momentum), arch/lr ótimos, **batch=32** (visualização). Época 0 incluída; linha tracejada = majority baseline ~0,626. | **batch=32** de propósito (legenda explica). Base demora ~18 ep no platô ~0,63; He/Momentum aceleram (90% val em ~10 / ~5 / ~2 ep). Final ~0,96–0,98. *Não usar batch=32 como config final.* |
+| [`stage1_early_stopping.png`](figures/stage1_early_stopping.png) | 5 | **Metodologia** + **Resultados** | Dois painéis (até 200 épocas): loss e acurácia **treino vs validação**; linha vertical = época de **early stopping** (mínimo val loss). | Val loss sobe após o ponto ótimo (overfitting); treino continua melhorando. Época ótima típica ~**37** com config final. Justifica retreino em treino+val por exatamente esse número de épocas. |
+| [`stage2_final_training.png`](figures/stage2_final_training.png) | 5 | **Resultados** | Dois painéis: retreino em **treino+val** por `best_epoch` épocas; curva de **teste** acompanha o histórico (sem val separada). | Test acc sobe até ~**0,97**; test loss cai junto com train loss. Modelo final usado na matriz de confusão e interpretabilidade. |
 | [`final_test_confusion_matrix.png`](figures/final_test_confusion_matrix.png) | 5 | **Resultados** | Heatmap 2×2 no **test set** (115 amostras): contagem true vs predicted (B/M), colormap azul, anotações nas células. | Diagonal forte (70 TN benigno, 42 TP maligno). **2 FP** (benigno→maligno), **1 FN** (maligno→benigno). Test acc **97,4%**. Complementa a T5. |
+| [`gradient_importance_top10.png`](figures/gradient_importance_top10.png) | 6.1 | **Interpretabilidade** | Bar chart horizontal: top-10 features por média de **\|gradiente de entrada\|** w.r.t. classe predita (test set). | Destaque para `worst_*` e concavidade (`worst concave points`, `worst concavity`, `mean concave points`). Medida local por amostra, agregada globalmente. |
+| [`ablation_feature_ce.png`](figures/ablation_feature_ce.png) | 6.2 | **Interpretabilidade** | Top-10 features por **aumento de cross-entropy** ao zerar cada feature (média padronizada). | `worst radius`, `worst concave points`, `worst texture` no topo. CE contínuo captura mudança de confiança mesmo quando acurácia discreta não muda. |
+| [`ablation_family_ce.png`](figures/ablation_family_ce.png) | 6.2 | **Interpretabilidade** | Barras: ablação simultânea de famílias `mean_*`, `worst_*`, `*_error`. | Família **`worst_*`** costuma ter maior ΔCE — medidas extremas mais discriminativas que médias ou erros. |
+| [`ablation_attribute_ce.png`](figures/ablation_attribute_ce.png) | 6.2 | **Interpretabilidade** | Barras horizontais: ablação dos 3 descritores por **atributo-base** (mean + error + worst). | **Raio** e **concave points** lideram; textura/smoothness menores. Concorda parcialmente com gradientes e SHAP. |
+| [`optimizer_training_curves.png`](figures/optimizer_training_curves.png) | 7 | **Extras / Discussão** (He, momentum) | Uma curva: 4 configs (Base, +He, +Momentum, +He+Momentum), arch/lr ótimos, **batch=32** (visualização). Época 0 incluída; linha tracejada = majority baseline ~0,626. | **batch=32** de propósito (legenda explica). Base demora ~18 ep no platô ~0,63; He/Momentum aceleram (90% val em ~10 / ~5 / ~2 ep). Final ~0,96–0,98. *Não usar batch=32 como config final.* |
 | [`shap_summary.png`](figures/shap_summary.png) | 9 | **Interpretabilidade** (complemento ao gradiente) | SHAP beeswarm: impacto de cada feature em P(maligno); cor = valor da feature (baixo azul, alto vermelho). | Top: `worst radius`, `worst concave points`, `worst texture`, `worst perimeter`. Alto valor → SHAP positivo (empurra maligno). Concorda em parte com gradientes/ablação (`worst_*`, concavidade). |
 | [`waterfall_patient_0.png`](figures/waterfall_patient_0.png) | 6.3 | **Interpretabilidade** (caso individual) | Waterfall **gradiente×input** — Paciente **#0**: verdade **benigno**, P(maligno)=**0,396** (acerto). | Barras vermelhas empurram para maligno; **`worst smoothness`** (teal, −0,466) puxa fortemente para benigno. Exemplo de decisão correta com features conflitantes. |
 | [`waterfall_patient_1.png`](figures/waterfall_patient_1.png) | 6.3 | **Interpretabilidade** | Paciente **#1**: benigno, P(maligno)=**0,000** (acerto confiante). | Quase todas as barras teal; destaque **`worst smoothness`** (−0,155), **`worst texture`** (−0,066). Caso “fácil”. |
@@ -74,12 +80,7 @@ Tabela para redação do relatório: **onde colocar**, **o que descrever**, **n�
 
 | Conteúdo | Seção | Sugestão no relatório |
 |----------|-------|----------------------|
-| Curvas Stage 1 / Stage 2 (early stopping + retreino) | 5 | **Metodologia** + **Resultados** |
-| Top-10 gradientes de entrada (bar chart) | 6.1 | **Interpretabilidade** |
-| Ablação por CE / família / atributo-base | 6.2 | **Interpretabilidade** — comparar com gradientes; citar limitação do accuracy drop discreto |
 | SHAP scatter (top-5) e waterfall interativos | 9 | **Interpretabilidade** — opcional se couber |
-
-Para incluir no PDF: capturar do notebook ou adicionar `savefig` nas células correspondentes.
 
 ---
 
@@ -88,9 +89,10 @@ Para incluir no PDF: capturar do notebook ou adicionar `savefig` nas células co
 ```
 Introdução / Dados     → (texto) + opcional pca_2d_projection_baseline
 Implementação          → (equações) — sem figura obrigatória
+Metodologia            → stage1_early_stopping (early stopping na val)
 Experimentos           → hyperparam_heatmap, architecture_bar_chart, hyperparam_training_curves
-Resultados             → baseline_training_history, final_test_confusion_matrix
-Interpretabilidade     → shap_summary, 1–2 waterfalls, gráficos seção 6 (notebook)
+Resultados             → baseline_training_history, stage2_final_training, final_test_confusion_matrix
+Interpretabilidade     → gradient_importance_top10, ablation_*_ce, shap_summary, 1–2 waterfalls
 Extras / Discussão     → optimizer_training_curves; waterfall_patient_39 (erro); fase de latência
 ```
 

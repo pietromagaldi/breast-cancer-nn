@@ -33,7 +33,7 @@
 \maketitle
 
 \begin{abstract}
-Implementamos uma rede neural multicamadas (MLP) \emph{100\% NumPy} para classificar tumores do dataset \emph{Breast Cancer Wisconsin (Diagnostic)} em benignos ou malignos. O trabalho cobre forward pass, backpropagation e mini-batch SGD com ReLU, Softmax e cross-entropy; exploração de hiperparâmetros; avaliação final com early stopping; e interpretabilidade por gradientes de entrada e ablação. O melhor modelo alcançou \textbf{98,2\%} de acurácia no conjunto de teste (114 amostras), com dois erros.
+Implementamos uma rede neural multicamadas (MLP) \emph{100\% NumPy} para classificar tumores do dataset \emph{Breast Cancer Wisconsin (Diagnostic)} em benignos ou malignos. O trabalho cobre forward pass, backpropagation e mini-batch SGD com ReLU, Softmax e cross-entropy; exploração de hiperparâmetros; avaliação final com early stopping; e interpretabilidade por gradientes de entrada e ablação. O melhor modelo alcançou \textbf{97,4\%} de acurácia no conjunto de teste (115 amostras), com três erros.
 \end{abstract}
 
 \section{Introdução}
@@ -122,7 +122,7 @@ Variamos \textbf{um hiperparâmetro por vez} (100 épocas, \emph{seeds} 1, 2, 42
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\linewidth]{hyperparam_heatmap.png}
+    \includegraphics[width=0.65\linewidth]{hyperparam_heatmap.png}
     \caption{Heatmap de val acc ($\alpha \times$ \texttt{batch}).}
     \label{fig:heatmap}
 \end{figure}
@@ -131,31 +131,31 @@ A Figura~\ref{fig:hypercurves} evidencia a \textbf{fase de latência}: curvas in
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{hyperparam_training_curves.png}
+    \includegraphics[width=1\linewidth]{hyperparam_training_curves.png}
     \caption{Curvas de acurácia ao variar $\alpha$, \texttt{batch} e arquitetura (treino pontilhado, validação sólida).}
     \label{fig:hypercurves}
 \end{figure}
 
-\subsection{Treinamento final e comparação \emph{shallow/deep}}
+\subsection{Treinamento final}
 
 Adotamos \textbf{early stopping} em duas fases: (1) treinar em treino+validação separados por 200 épocas e identificar a época de menor val loss (época~37, loss 0{,}108); (2) retreinar em treino$\cup$validação (454 amostras) por exatamente 37 épocas e avaliar o teste uma vez.
 
 \section{Resultados}
 
-\textbf{Teste final:} acurácia \textbf{98,2\%} (112/114 corretos), test loss 0{,}085. A Figura~\ref{fig:confusion} mostra a matriz de confusão.
+\textbf{Teste final:} acurácia \textbf{97,4\%} (112/115 corretos), test loss 0{,}085. A Figura~\ref{fig:confusion} mostra a matriz de confusão.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.42\linewidth]{final_test_confusion_matrix.png}
-    \caption{Matriz de confusão no conjunto de teste final (0 = benigno, 1 = maligno).}
+    \caption{Matriz de confusão no conjunto de teste final (115 amostras).}
     \label{fig:confusion}
 \end{figure}
 
-Dois falsos negativos (malignos classificados como benignos) e nenhum falso positivo. Sensibilidade para malignos: 41/43 $\approx$ 95,3\%; especificidade: 71/71 = 100\%.
+Dois falsos positivos (benignos classificados como malignos) e um falso negativo. Sensibilidade para malignos: 42/43 $\approx$ 97,7\%; especificidade: 70/72 $\approx$ 97,2\%.
 
 \textbf{Rede rasa vs.\ profunda:} em val acc as três arquiteturas empatam (0{,}978), mas a profunda exige muito mais épocas para sair do platô (Figura~\ref{fig:hypercurves}) e apresenta maior train acc (0{,}995), sugerindo capacidade extra não aproveitada neste dataset tabular pequeno. Optamos pela rede \texttt{[30,16,2]} por parsimônia.
 
-\textbf{Extras omitidos por brevidade:} no notebook também comparamos \texttt{MLPClassifier} (sklearn), com mesma test acc (98,2\%), e avaliamos inicialização He e momentum (Seção~7), que encurtam a fase de latência; as figuras correspondentes ficam no repositório, mas foram omitidas aqui pelo limite de 6 páginas.
+\textbf{Extras omitidos por brevidade:} no notebook também comparamos \texttt{MLPClassifier} (sklearn), com mesma test acc (97,4\%), e avaliamos inicialização He e momentum (Seção~7), que encurtam a fase de latência; as figuras correspondentes ficam no repositório, mas foram omitidas aqui pelo limite de 6 páginas.
 
 \section{Interpretabilidade}
 
@@ -163,33 +163,51 @@ Analisamos o \texttt{final\_model} por gradientes de entrada e ablação. També
 
 \subsection{Importância global}
 
-\textbf{Gradientes de entrada (6.1):} para cada amostra de teste, calculamos $\partial P(\hat{c})/\partial x_j$ em relação à classe predita e médiamos $|\partial P / \partial x_j|$. Features \texttt{worst\_*} dominam o ranking (e.g.\ \texttt{worst concave points}, \texttt{worst radius}, \texttt{worst texture}, \texttt{worst area}).
+\textbf{Gradientes de entrada (6.1):} para cada amostra de teste, calculamos $\partial P(\hat{c})/\partial x_j$ em relação à classe predita e médiamos $|\partial P / \partial x_j|$. A Figura~\ref{fig:grad} mostra que features \texttt{worst\_*} ocupam as seis primeiras posições; \texttt{worst radius} e \texttt{worst texture} lideram ($\approx$0{,}028 e 0{,}027), seguidas de \texttt{worst perimeter}, \texttt{worst concave points} e \texttt{worst area}. Entre as \texttt{mean\_*}, destacam-se \texttt{mean concave points}, \texttt{mean radius} e \texttt{mean perimeter}.
 
-\textbf{Ablação (6.2):} zeramos features (individual, por família \texttt{mean\_*}/\texttt{worst\_*}/\texttt{*\_error}, ou por atributo-base) e medimos aumento de cross-entropy. Com apenas 114 amostras de teste, queda de acurácia é \textbf{discreta} (passos de $1/114 \approx 0{,}0088$), tornando \texttt{accuracy\_drop} pouco discriminante. Ranqueamos por \textbf{ce\_increase} e \textbf{true\_conf\_drop}.
+\textbf{Ablação (6.2):} zeramos features (individual, por família \texttt{mean\_*}/\texttt{worst\_*}/\texttt{*\_error}, ou por atributo-base) e medimos aumento de cross-entropy. Com apenas 115 amostras de teste, queda de acurácia é \textbf{discreta} (passos de $1/115 \approx 0{,}0087$), tornando \texttt{accuracy\_drop} pouco discriminante. Ranqueamos por \textbf{ce\_increase} (Figuras~\ref{fig:abl-feature} a \ref{fig:abl-attribute}).
 
-\begin{itemize}
-    \item \textbf{Feature individual:} \texttt{worst texture} (CE +0{,}012), \texttt{worst symmetry} (+0{,}009), \texttt{worst concavity} (+0{,}006).
-    \item \textbf{Família:} \texttt{worst\_*} (+0{,}107 CE) $\gg$ \texttt{mean\_*} (+0{,}014) $\gg$ \texttt{*\_error} (+0{,}011).
-    \item \textbf{Atributo-base:} \texttt{texture} (+0{,}030) lidera; \texttt{concavity} e \texttt{symmetry} seguem empatados em CE.
-\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{gradient_importance_top10.png}
+    \caption{Top 10 features por importância global via gradiente de entrada ($|\partial P / \partial x|$ médio no teste).}
+    \label{fig:grad}
+\end{figure}
 
-\textbf{Discordância entre métodos:} gradientes e ablação por feature coincidem parcialmente em \{\texttt{worst area}, \texttt{worst concave points}, \texttt{worst radius}, \texttt{worst texture}\}, mas a ablação por \emph{atributo-base} destaca \texttt{texture} enquanto gradientes enfatizam \texttt{concave points}. Essa divergência é esperada: gradientes medem sensibilidade local; ablação mede efeito global de remoção.
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{ablation_feature_ce.png}
+        \caption{Ablação por feature individual.}
+        \label{fig:abl-feature}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{ablation_family_ce.png}
+        \caption{Ablação por família (\texttt{mean\_*}, \texttt{worst\_*}, \texttt{*\_error}).}
+        \label{fig:abl-family}
+    \end{subfigure}
 
-\subsection{Explicações individuais}
+    \vspace{0.6em}
+    \begin{subfigure}[b]{0.62\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{ablation_attribute_ce.png}
+        \caption{Ablação por atributo-base (tripla \texttt{mean}/\texttt{error}/\texttt{worst}).}
+        \label{fig:abl-attribute}
+    \end{subfigure}
+    \caption{Ablação ranqueada por aumento de cross-entropy ao zerar grupos de features.}
+    \label{fig:ablation}
+\end{figure}
 
-Waterfalls por gradiente$\times$input (Seção~6.3; figuras em \texttt{figures/waterfall\_patient\_*.png}, omitidas aqui):
+Na ablação por feature (Figura~\ref{fig:abl-feature}), \texttt{worst texture} (+0{,}012 CE) e \texttt{worst symmetry} (+0{,}009) lideram. Por família (Figura~\ref{fig:abl-family}), remover todo o bloco \texttt{worst\_*} eleva a CE em $\approx$0{,}107, muito acima de \texttt{mean\_*} (+0{,}014) e \texttt{*\_error} (+0{,}011). Por atributo-base (Figura~\ref{fig:abl-attribute}), \texttt{texture} (+0{,}030) é o mais crítico; \texttt{symmetry}, \texttt{area} e \texttt{concavity} ficam empatados em torno de 0{,}008 a 0{,}010.
 
-\textbf{Paciente \#0} (benigno, $P(M)=0{,}396$, acerto): sinais conflitantes. \texttt{worst concave points} alto empurra maligno, mas \texttt{worst smoothness} compensa para benigno.
-
-\textbf{Paciente \#2} (maligno, $P(M)=0{,}992$, acerto): caso ``fácil''; \texttt{worst texture/radius} elevados alinham-se com maligno.
-
-\textbf{Paciente \#39} (benigno, $P(M)=0{,}602$, \textbf{falso positivo}): \texttt{mean radius} e \texttt{worst symmetry} empurram maligno; \texttt{worst radius/concavity} puxam benigno. Trata-se de sinal misto na região de overlap do PCA (Figura~\ref{fig:pca}).
+\textbf{Discordância entre métodos:} gradientes e ablação por feature coincidem parcialmente em \{\texttt{worst area}, \texttt{worst concave points}, \texttt{worst radius}, \texttt{worst texture}\}, mas a ablação por \emph{atributo-base} destaca \texttt{texture} enquanto gradientes enfatizam morfologia de raio/perímetro. Essa divergência é esperada: gradientes medem sensibilidade local; ablação mede efeito global de remoção.
 
 \section{Discussão crítica}
 
 \textbf{Limitações metodológicas:}
 \begin{enumerate}
-    \item \textbf{Teste pequeno (114 amostras):} métricas de ablação por acurácia são grosseiras; preferimos CE contínua, mas incertezas permanecem elevadas.
+    \item \textbf{Teste pequeno (115 amostras):} métricas de ablação por acurácia são grosseiras; preferimos CE contínua, mas incertezas permanecem elevadas.
     \item \textbf{Validação estreita (91 amostras):} empates frequentes entre configs (val acc 0{,}978); escolhemos parsimônia, não superioridade estatística comprovada.
     \item \textbf{Early stopping + retreino:} embora evitemos \emph{peek} direto no teste durante busca de hiperparâmetros, o número de épocas ótimo foi estimado na validação; retreino em treino+val melhora robustez, mas não elimina variância de \emph{seed}.
     \item \textbf{Interpretabilidade:} gradientes pontuais e ablação binária (zerar feature) não capturam interações não-lineares; SHAP foi implementado mas omitido do relatório (ver notebook).
