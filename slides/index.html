@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TP3 MC906 · Breast Cancer MLP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3efe8;
+      --bg-slide: #faf8f4;
+      --ink: #1c2428;
+      --ink-muted: #5a656b;
+      --teal: #1a5f66;
+      --teal-light: #d8ece9;
+      --teal-dark: #134a50;
+      --benign: #3d7a6b;
+      --benign-light: #e4f0ec;
+      --malignant: #b84a3d;
+      --malignant-light: #f5e8e6;
+      --accent: #c17f3a;
+      --accent-light: #f5ebe0;
+      --border: rgba(26, 95, 102, 0.18);
+      --shadow: 0 12px 40px rgba(28, 36, 40, 0.1);
+      --font-display: "Instrument Serif", Georgia, serif;
+      --font-body: "DM Sans", system-ui, sans-serif;
+      --header-h: clamp(4.5rem, 14vh, 6.5rem);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 95% 5%, rgba(26, 95, 102, 0.12), transparent 55%),
+        radial-gradient(ellipse 55% 45% at 5% 95%, rgba(184, 74, 61, 0.08), transparent 50%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(193, 127, 58, 0.05), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .deck { position: relative; width: 100vw; height: 100vh; z-index: 1; }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(16px);
+      transition: opacity 0.45s var(--ease), transform 0.45s var(--ease), visibility 0.45s;
+      overflow: hidden;
+      background: var(--bg-slide);
+    }
+
+    .slide.active { opacity: 1; visibility: visible; transform: translateY(0); z-index: 2; }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--teal), var(--accent), var(--malignant));
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 6px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--teal), var(--accent));
+    }
+
+    .slide-grid {
+      display: grid;
+      grid-template-rows: var(--header-h) 1fr;
+      height: 100%;
+      padding: clamp(1rem, 2.5vw, 2rem);
+      padding-bottom: 3rem;
+      padding-left: clamp(1.25rem, 3vw, 2.25rem);
+      gap: clamp(0.65rem, 1.5vh, 1rem);
+    }
+
+    .slide-header {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding-left: 0.35rem;
+      border-bottom: 2px solid var(--teal-light);
+      padding-bottom: 0.5rem;
+    }
+
+    .block-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fff;
+      background: var(--teal);
+      padding: 0.28rem 0.65rem;
+      border-radius: 4px;
+      margin-bottom: 0.4rem;
+      width: fit-content;
+    }
+
+    h1, h2 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      line-height: 1.08;
+      color: var(--ink);
+    }
+
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+    h2 { font-size: clamp(1.4rem, 3vw, 2.15rem); }
+
+    .subtitle {
+      font-size: clamp(0.82rem, 1.5vw, 1rem);
+      color: var(--ink-muted);
+      margin-top: 0.25rem;
+    }
+
+    .slide-body {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .slide-body.fill {
+      display: grid;
+      height: 100%;
+      min-height: 0;
+    }
+
+    ul.bullets {
+      list-style: none;
+      font-size: clamp(0.9rem, 1.55vw, 1.08rem);
+      line-height: 1.5;
+    }
+
+    ul.bullets.compact { font-size: clamp(0.82rem, 1.35vw, 0.95rem); }
+
+    ul.bullets li {
+      position: relative;
+      padding-left: 1.15rem;
+      margin-bottom: 0.5rem;
+    }
+
+    ul.bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    ul.bullets li strong { color: var(--teal-dark); font-weight: 700; }
+
+    .bullet-grid {
+      display: grid;
+      gap: clamp(0.65rem, 1.2vw, 0.9rem);
+      height: 100%;
+      align-content: stretch;
+    }
+
+    .bullet-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .bullet-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+    @media (max-width: 900px) {
+      .bullet-grid.cols-2, .bullet-grid.cols-3 { grid-template-columns: 1fr; }
+    }
+
+    .bullet-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: clamp(0.85rem, 1.8vw, 1.15rem);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-top: 4px solid var(--teal);
+    }
+
+    .bullet-card.accent { border-top-color: var(--accent); background: linear-gradient(145deg, #fff 70%, var(--accent-light)); }
+    .bullet-card.benign { border-top-color: var(--benign); background: linear-gradient(145deg, #fff 70%, var(--benign-light)); }
+    .bullet-card.malignant { border-top-color: var(--malignant); background: linear-gradient(145deg, #fff 70%, var(--malignant-light)); }
+
+    .bullet-card .card-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      margin-bottom: 0.35rem;
+    }
+
+    .two-col {
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(0.85rem, 2vw, 1.35rem);
+      align-items: stretch;
+    }
+
+    .fig-slide {
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: clamp(0.85rem, 2vw, 1.25rem);
+    }
+
+    @media (max-width: 960px) {
+      .two-col, .fig-slide { grid-template-columns: 1fr; }
+    }
+
+    .fig-main {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 0.5rem;
+    }
+
+    .fig-main img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .takeaway-panel {
+      background: linear-gradient(165deg, var(--teal-light) 0%, #fff 55%);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--teal);
+      padding: clamp(1rem, 2vw, 1.35rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: var(--shadow);
+    }
+
+    .takeaway-panel.accent-panel {
+      background: linear-gradient(165deg, var(--accent-light) 0%, #fff 60%);
+      border-left-color: var(--accent);
+    }
+
+    .takeaway-panel .takeaway-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--teal);
+      margin-bottom: 0.65rem;
+    }
+
+    .takeaway-panel.accent-panel .takeaway-title { color: var(--accent); }
+
+    .takeaway-bar {
+      grid-column: 1 / -1;
+      background: linear-gradient(90deg, var(--teal-dark), var(--teal));
+      color: #fff;
+      padding: 0.65rem 1.1rem;
+      border-radius: 10px;
+      font-size: clamp(0.82rem, 1.4vw, 0.95rem);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .takeaway-bar::before {
+      content: "▸";
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .placeholder {
+      width: 100%;
+      height: 100%;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      border: 2px dashed var(--teal);
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--teal-light), #fff);
+      text-align: center;
+    }
+
+    .placeholder .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--teal);
+      text-transform: uppercase;
+    }
+
+    .placeholder .hint { font-size: 0.72rem; color: var(--ink-muted); max-width: 32ch; line-height: 1.35; }
+    .placeholder .file { font-size: 0.68rem; font-family: monospace; color: var(--accent); background: var(--accent-light); padding: 0.2rem 0.5rem; border-radius: 4px; }
+
+    .eq-block {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: clamp(1rem, 2vw, 1.35rem);
+      font-size: clamp(0.88rem, 1.45vw, 1.02rem);
+      line-height: 1.75;
+      box-shadow: var(--shadow);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .eq-block p { margin-bottom: 0.45rem; }
+    .eq-block p:last-child { margin-bottom: 0; }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.5rem; }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+    }
+
+    .badge.benign { background: var(--benign-light); color: var(--benign); border: 1px solid var(--benign); }
+    .badge.malignant { background: var(--malignant-light); color: var(--malignant); border: 1px solid var(--malignant); }
+    .badge.neutral { background: var(--teal-light); color: var(--teal); border: 1px solid var(--teal); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.65rem;
+      height: 100%;
+      align-content: center;
+    }
+
+    .metric {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: clamp(0.75rem, 1.5vw, 1rem);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .metric .val {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      color: var(--teal);
+      line-height: 1;
+    }
+
+    .metric .lbl {
+      font-size: 0.65rem;
+      color: var(--ink-muted);
+      margin-top: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agenda-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      justify-content: center;
+      width: 100%;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .agenda-row {
+      display: grid;
+      grid-template-columns: 2.5rem minmax(8rem, 10rem) 1fr;
+      gap: 0.85rem 1.1rem;
+      align-items: center;
+      padding: 0.65rem 1rem;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--teal);
+      box-shadow: 0 4px 16px rgba(28, 36, 40, 0.05);
+    }
+
+    .agenda-row:nth-child(2) { border-left-color: var(--accent); }
+    .agenda-row:nth-child(3) { border-left-color: var(--benign); }
+    .agenda-row:nth-child(4) { border-left-color: var(--malignant); }
+    .agenda-row:nth-child(5) { border-left-color: var(--teal-dark); }
+
+    .agenda-row .num {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--teal);
+      opacity: 0.45;
+      line-height: 1;
+    }
+
+    .agenda-row h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--teal-dark);
+      margin: 0;
+    }
+
+    .agenda-row p {
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .slide.title-slide {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: clamp(1.5rem, 4vw, 3.5rem);
+      padding-bottom: 3rem;
+    }
+
+    .title-slide h1 {
+      font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+      max-width: 14ch;
+    }
+
+    .title-slide .course {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--teal);
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      margin-bottom: 1rem;
+    }
+
+    .authors {
+      margin-top: 1.5rem;
+      font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+      color: var(--ink-muted);
+      line-height: 1.7;
+    }
+
+    .slide-body.bullets-centered {
+      display: flex;
+      align-items: center;
+      padding-left: 0.5rem;
+    }
+
+    .slide-body.bullets-centered ul.bullets {
+      font-size: clamp(1rem, 1.75vw, 1.2rem);
+      line-height: 1.65;
+    }
+
+    .slide-body.bullets-centered ul.bullets li { margin-bottom: 0.75rem; }
+
+    .sklearn-lower {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      margin-top: 0.85rem;
+      gap: 0.75rem;
+    }
+
+    .table-wrap {
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .table-wrap .mini-table { width: auto; }
+
+    .sklearn-takeaways {
+      width: 100%;
+      max-width: 52ch;
+      align-self: center;
+    }
+
+    .sklearn-takeaways ul.bullets.compact {
+      font-size: clamp(0.85rem, 1.4vw, 0.98rem);
+    }
+
+    .sklearn-takeaways li strong { color: var(--teal-dark); }
+
+    .three-up {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+    }
+
+    @media (max-width: 1000px) { .three-up { grid-template-columns: 1fr; } }
+
+    .case-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .case-card .case-head {
+      padding: 0.5rem 0.65rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .case-card.ok .case-head { background: var(--benign); color: #fff; }
+    .case-card.err .case-head { background: var(--malignant); color: #fff; }
+
+    .case-card .fig-main { border: none; border-radius: 0; box-shadow: none; flex: 1; }
+
+    .mini-table {
+      width: 100%;
+      font-size: 0.85rem;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .mini-table th, .mini-table td {
+      padding: 0.6rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .mini-table th {
+      background: var(--teal);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    @media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
+
+    .compare-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1rem 1.15rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .compare-box h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 0.65rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--teal-light);
+    }
+
+    .compare-box.sklearn h3 { color: var(--accent); border-bottom-color: var(--accent-light); }
+
+    .formula-highlight {
+      background: var(--teal-light);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      margin: 0.5rem 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.88em;
+      color: var(--teal-dark);
+      text-align: center;
+    }
+
+    .nav-hint {
+      position: fixed;
+      bottom: 0.85rem;
+      right: 1.25rem;
+      font-size: 0.68rem;
+      color: var(--ink-muted);
+      z-index: 10;
+    }
+
+    .progress-wrap {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 5px;
+      background: rgba(26, 95, 102, 0.15);
+      z-index: 10;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), var(--accent), var(--malignant));
+      width: 0%;
+      transition: width 0.35s var(--ease);
+    }
+
+    .slide-counter {
+      position: fixed;
+      bottom: 0.7rem;
+      left: 1.25rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--teal);
+      z-index: 10;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      font-size: 0.65rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+
+    code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.9em;
+      background: var(--teal-light);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: var(--teal-dark);
+    }
+
+    /* Exportar PDF: tecla P ou Arquivo → Imprimir → Salvar como PDF (paisagem) */
+    @media print {
+      @page {
+        size: landscape;
+        margin: 8mm;
+      }
+
+      html, body {
+        height: auto;
+        overflow: visible;
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      body::before { display: none; }
+
+      .nav-hint,
+      .slide-counter,
+      .progress-wrap { display: none !important; }
+
+      .deck {
+        position: static;
+        width: 100%;
+        height: auto;
+      }
+
+      .slide {
+        position: relative !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 185mm;
+        page-break-after: always;
+        break-after: page;
+        overflow: visible !important;
+        background: var(--bg-slide) !important;
+      }
+
+      .slide:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .slide-grid {
+        height: auto;
+        min-height: 175mm;
+      }
+
+      .slide.title-slide {
+        min-height: 185mm;
+        padding: 2rem;
+      }
+
+      .slide-body,
+      .slide-body.fill,
+      .fig-main,
+      .takeaway-panel {
+        overflow: visible !important;
+      }
+
+      .fig-main img {
+        max-height: 105mm;
+      }
+
+      .three-up {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .agenda-rows { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+
+    <section class="slide title-slide active" data-block="">
+      <p class="course">MC906 · TP3 Deep Learning</p>
+      <h1>Classificação de câncer de mama com MLP em NumPy</h1>
+      <p class="subtitle">Breast Cancer Wisconsin · forward &amp; backprop do zero · interpretabilidade</p>
+      <p class="authors">
+        Adriano Ribeiro Franulovic Campos · Andrei Quaresma Pinto · Matheus Ferracciú Scatolin<br>
+        Pietro Fernandes Magaldi · Tiago Perrupato Antunes
+      </p>
+      <p class="subtitle" style="margin-top:1.25rem;font-size:0.85rem">Prof. Anderson Rocha</p>
+    </section>
+
+    <section class="slide" data-block="">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <h2>Agenda · ~25 min</h2>
+          <p class="subtitle">5 blocos · ~5 slides por apresentador</p>
+        </header>
+        <div class="slide-body fill" style="align-content:center">
+          <div class="agenda-rows">
+            <div class="agenda-row"><span class="num">01</span><h3>Contexto &amp; dados</h3><p>FNA, dataset, pré-processamento, PCA</p></div>
+            <div class="agenda-row"><span class="num">02</span><h3>Implementação</h3><p>MLP, ReLU, Softmax, CE, backprop</p></div>
+            <div class="agenda-row"><span class="num">03</span><h3>Experimentos</h3><p>Baseline, hiperparâmetros, early stopping</p></div>
+            <div class="agenda-row"><span class="num">04</span><h3>Resultados &amp; interpret.</h3><p>Teste, ablação ΔCE, casos individuais</p></div>
+            <div class="agenda-row"><span class="num">05</span><h3>Extras &amp; discussão</h3><p>He, momentum, sklearn, SHAP, limitações</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BLOCO 1 -->
+    <section class="slide" data-block="1 · Contexto">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 1</span>
+          <h2>Problema &amp; objetivos do TP</h2>
+          <p class="subtitle">Application 1: classificação tabular</p>
+        </header>
+        <div class="slide-body bullets-centered fill">
+          <ul class="bullets">
+            <li><strong>Task:</strong> classificar núcleos de aspirado (FNA) como <span style="color:var(--benign)">benigno (B)</span> ou <span style="color:var(--malignant)">maligno (M)</span></li>
+            <li><strong>Requisito:</strong> MLP 100% manual com forward, backprop e mini-batch SGD (NumPy only)</li>
+            <li><strong>Ativações:</strong> ReLU (hidden) · Softmax (output) · loss = cross-entropy</li>
+            <li><strong>Entregáveis:</strong> curvas de treino, exploração de hiperparâmetros, interpretabilidade obrigatória</li>
+            <li><strong>Notebook:</strong> <code>breast-cancer-nn.ipynb</code>, autocontido, sem PyTorch/TensorFlow</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="1 · Contexto">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 1</span>
+          <h2>Coleta da amostra · Fine Needle Aspiration (FNA)</h2>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Agulha fina extrai células da lesão; a lâmina citológica é digitalizada</li>
+              <li>O modelo não vê a imagem: usa <strong>30 medidas morfológicas do núcleo</strong></li>
+              <li>Cada feature existe em 3 escalas: <code>mean_*</code>, <code>worst_*</code>, <code>*_error</code></li>
+            </ul>
+          </div>
+          <div class="fig-main">
+            <img src="../assets/fna_procedure.png" alt="FNA">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="1 · Contexto">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 1</span>
+          <h2>Benigno vs maligno · morfologia celular</h2>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="fig-main">
+            <img src="../assets/benign_vs_malignant.png" alt="Benigno vs maligno">
+          </div>
+          <div class="takeaway-panel accent-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><strong>Benigno:</strong> núcleos uniformes, contornos regulares; valores tendem a ser menores</li>
+              <li><strong>Maligno:</strong> irregularidade e concavidades; <code>worst_*</code> tendem a subir</li>
+              <li>O MLP aprende correlações estatísticas, não “vê” células como em CNN</li>
+            </ul>
+            <div class="badge-row">
+              <span class="badge benign">B = 0</span>
+              <span class="badge malignant">M = 1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="1 · Contexto">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 1</span>
+          <h2>Dataset &amp; pré-processamento</h2>
+          <p class="subtitle">Breast Cancer Wisconsin (Diagnostic)</p>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="metrics" style="grid-template-columns:repeat(2,1fr)">
+            <div class="metric"><div class="val">569</div><div class="lbl">amostras</div></div>
+            <div class="metric"><div class="val">30</div><div class="lbl">features</div></div>
+            <div class="metric"><div class="val">62.7%</div><div class="lbl">classe B</div></div>
+            <div class="metric"><div class="val" style="font-size:clamp(1.1rem,2.2vw,1.45rem)">64·16·20%</div><div class="lbl">363·91·115</div></div>
+          </div>
+          <div class="takeaway-panel">
+            <p class="takeaway-title">Pipeline</p>
+            <ul class="bullets compact">
+              <li><strong>Split:</strong> treino 363 (64%) · val 91 (16%) · teste 115 (20%)</li>
+              <li>Labels: <strong>B=0</strong>, <strong>M=1</strong> (invertemos o sklearn)</li>
+              <li>Z-score: μ e σ <em>só do treino</em></li>
+              <li>One-hot no treino · HP na <strong>validation</strong>; teste <strong>uma vez</strong> no final</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="1 · Contexto">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 1</span>
+          <h2>Separação das classes · PCA 2D</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main">
+            <img src="../figures/pca_2d_projection_baseline.png" alt="PCA 2D">
+          </div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Classes <strong>parcialmente separáveis</strong> mesmo em 2D</li>
+              <li>Baseline já alinha P(maligno) com os clusters</li>
+              <li>Overlap em PC1 ≈ 0 a 2: ainda há casos difíceis (útil para interpretabilidade)</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- BLOCO 2 -->
+    <section class="slide" data-block="2 · Implementação">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 2</span>
+          <h2>Arquitetura da MLP</h2>
+          <p class="subtitle">Melhor config (val): [30, 16, 2]</p>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="fig-main">
+            <img src="../assets/mlp_arch.png" alt="Diagrama MLP">
+          </div>
+          <div class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><code>MLP</code>: forward, backward, update, fit (gradient check ✓)</li>
+              <li>30 entradas tabulares, 16 neurônios ReLU, 2 logits Softmax</li>
+              <li>Init default <code>N(0, 0.01)</code>; He nos experimentos extras</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="2 · Implementação">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 2</span>
+          <h2>Forward pass</h2>
+        </header>
+        <div class="slide-body fill" style="grid-template-rows:1fr auto">
+          <div class="two-col" style="display:grid;min-height:0">
+            <div class="eq-block">
+              <p><strong>Oculta:</strong> z<sup>(1)</sup> = xW<sup>(1)</sup> + b<sup>(1)</sup>, &nbsp; h = ReLU(z<sup>(1)</sup>)</p>
+              <p><strong>ReLU:</strong> max(0, t) · backward: 1<sub>t&gt;0</sub></p>
+              <p><strong>Saída:</strong> z<sup>(2)</sup> = hW<sup>(2)</sup> + b<sup>(2)</sup>, &nbsp; ŷ = softmax(z<sup>(2)</sup>)</p>
+              <p><strong>Softmax:</strong> ŷ<sub>k</sub> = e<sup>z<sub>k</sub></sup> / Σ<sub>j</sub> e<sup>z<sub>j</sub></sup></p>
+            </div>
+            <div class="fig-main">
+              <img src="../assets/forward_pass.png" alt="Forward pass">
+            </div>
+          </div>
+          <div class="takeaway-bar">Dados fluem em frente; ReLU “desliga” neurônios com z ≤ 0 (morte de ReLU no início do treino)</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="2 · Implementação">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 2</span>
+          <h2>Loss · Softmax + cross-entropy</h2>
+        </header>
+        <div class="slide-body fill" style="grid-template-rows:1fr auto">
+          <div class="two-col" style="display:grid;min-height:0">
+            <div class="eq-block">
+              <p><strong>Cross-entropy</strong> (y one-hot, ŷ softmax):</p>
+              <p class="formula-highlight">L = − Σ<sub>k</sub> y<sub>k</sub> log ŷ<sub>k</sub></p>
+              <p><strong>Gradiente na saída:</strong> ∂L/∂z<sup>(2)</sup> = ŷ − y</p>
+              <p>Mini-batch: média de L e ∇ sobre B amostras</p>
+            </div>
+            <div class="fig-main">
+              <img src="../assets/softmax_ce.png" alt="Softmax e CE">
+            </div>
+          </div>
+          <div class="takeaway-bar">Par Softmax+CE dá gradiente simples na saída; isso sustenta todo o backprop manual</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="2 · Implementação">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 2</span>
+          <h2>Backpropagation &amp; update</h2>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="eq-block">
+            <p>Chain rule camada a camada</p>
+            <p class="formula-highlight">W ← W − η · ∇<sub>W</sub>L</p>
+            <p><strong>Momentum (extra):</strong> v ← μv + ∇W, &nbsp; W ← W − ηv</p>
+          </div>
+          <div class="takeaway-panel accent-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Sem autograd: implementamos cada ∂ manualmente</li>
+              <li>Exploramos lr ∈ {0.001, 0.01, 0.1}, batch ∈ {8, 32, 64}</li>
+              <li>Jacobiano Softmax já “embutido” no ŷ − y da CE</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BLOCO 3 -->
+    <section class="slide" data-block="3 · Experimentos">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 3</span>
+          <h2>Baseline · treino inicial</h2>
+          <p class="subtitle">arch=[30,32,2] · lr=0.1 · batch=32 · 150 ep · 3 seeds</p>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/baseline_training_history.png" alt="Baseline"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Converge rápido com lr alto, mas <strong>val loss sobe</strong> após ~época 15</li>
+              <li>Val acc ~97 a 98%: bom ponto de partida, não o modelo final</li>
+              <li>Marcador = melhor val acc (~época 12)</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="3 · Experimentos">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 3</span>
+          <h2>Grid · learning rate × batch size</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/hyperparam_heatmap.png" alt="Heatmap"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><strong>lr=0.001</strong> fica em ~0,63 (preso no majority baseline)</li>
+              <li>Melhor célula: <strong>lr=0.01, batch=8</strong> com val acc 0,978</li>
+              <li>Seleção sempre por <strong>validation</strong>, nunca por teste</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="3 · Experimentos">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 3</span>
+          <h2>Symmetry-breaking phase</h2>
+          <p class="subtitle">Todas começam em ~62.7% = proporção da classe B</p>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/hyperparam_training_curves.png" alt="Curvas hiperparâmetros"></div>
+          <aside class="takeaway-panel accent-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><strong>Fase de latência:</strong> pesos pequenos e ReLUs mortas mantêm o platô em 62,7%</li>
+              <li>lr=0.1 quebra em ~2 ep; lr=0.01 em ~18 ep; lr=0.001 nunca sai</li>
+              <li>Rede profunda [30,64,32,2] demora ~45 ep: mais camadas enfraquecem o gradiente</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="3 · Experimentos">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 3</span>
+          <h2>Arquitetura · shallow vs deep</h2>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="fig-main"><img src="../figures/architecture_bar_chart.png" alt="Arquiteturas"></div>
+          <div class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Val acc <strong>0.978</strong> nas 3: escolhemos <strong>[30,16,2]</strong> por parsimônia</li>
+              <li>Rede maior: train sobe, val igual (overfitting sem ganho na generalização)</li>
+              <li><strong>Config final:</strong> lr=0.01, batch=8, arch=[30,16,2]</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="3 · Experimentos">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 3</span>
+          <h2>Early stopping · Stage 1</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/stage1_early_stopping.png" alt="Early stopping"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Época ótima ≈ <strong>37</strong> (mínimo val loss)</li>
+              <li>Após isso: train melhora e <strong>val piora</strong> (overfitting)</li>
+              <li>Define quantas épocas usar no retreino treino+val (Stage 2)</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- BLOCO 4 -->
+    <section class="slide" data-block="4 · Resultados">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Retreino final · Stage 2</h2>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="fig-main"><img src="../figures/stage2_final_training.png" alt="Stage 2"></div>
+          <div>
+            <div class="metrics">
+              <div class="metric"><div class="val">97.4%</div><div class="lbl">test acc</div></div>
+              <div class="metric"><div class="val">37</div><div class="lbl">épocas</div></div>
+              <div class="metric"><div class="val">2+1</div><div class="lbl">FP + FN</div></div>
+              <div class="metric"><div class="val">115</div><div class="lbl">test n</div></div>
+            </div>
+            <div class="takeaway-panel" style="margin-top:0.65rem">
+              <p class="takeaway-title">Takeaway</p>
+              <ul class="bullets compact">
+                <li>Treino+val unificados (454) · <strong>sem curva de val</strong> nesta fase</li>
+                <li>Teste avaliado <strong>uma única vez</strong> ao final</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="4 · Resultados">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Matriz de confusão · test set</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main" style="max-width:480px;margin:0 auto"><img src="../figures/final_test_confusion_matrix.png" alt="Confusão"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><strong>TN=70</strong> benignos corretos · <strong>TP=42</strong> malignos corretos</li>
+              <li><strong>2 FP</strong> (alarme falso) · <strong>1 FN</strong> (maligno perdido)</li>
+              <li>Erros raros, porém clinicamente relevantes (ver caso #39 na interpretabilidade)</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="4 · Interpretabilidade">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Importância global · input gradients</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/gradient_importance_top10.png" alt="Gradientes"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>|∂L/∂x<sub>i</sub>| grande: pequena mudança em x<sub>i</sub> altera muito a loss</li>
+              <li>Top: <code>worst radius</code>, <code>worst texture</code>, concavidade</li>
+              <li>Medida <strong>local</strong> (por amostra) agregada no test set</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOVO: Por que ΔCE -->
+    <section class="slide" data-block="4 · Interpretabilidade">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Por que ΔCE mede importância?</h2>
+          <p class="subtitle">Ablação no código: zerar coluna(s) em <code>X_test_std</code> (sem embaralhar)</p>
+        </header>
+        <div class="slide-body fill two-col">
+          <div class="fig-main">
+            <img src="../assets/ablation_ce_concept.png" alt="Conceito ablação CE">
+          </div>
+          <div class="takeaway-panel accent-panel">
+            <p class="takeaway-title">Lógica</p>
+            <ul class="bullets compact">
+              <li><strong>Como ablamos:</strong> copiamos o teste padronizado e fazemos <code>X[:, j] = 0</code> (uma feature ou um grupo)</li>
+              <li>Com z-score (μ, σ do treino), <strong>0 = média de treino</strong> na escala original (“apaga” o sinal da feature)</li>
+              <li><strong>ΔCE = CE<sub>ablated</sub> − CE<sub>baseline</sub></strong>; quanto maior o ΔCE, mais importante a feature</li>
+              <li><strong>Accuracy</strong> (n=115) quase não muda (passos de ~0,87%); CE captura queda de confiança sem flip de classe</li>
+            </ul>
+            <div class="formula-highlight" style="margin-top:0.65rem">Não usamos permutação/embaralhamento de coluna</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="4 · Interpretabilidade">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Ablação · resultados (ΔCE)</h2>
+        </header>
+        <div class="slide-body fill" style="grid-template-rows:1fr auto">
+          <div class="two-col" style="display:grid;height:100%;min-height:0">
+            <div class="fig-main"><img src="../figures/ablation_feature_ce.png" alt="Ablação feature"></div>
+            <div class="fig-main"><img src="../figures/ablation_family_ce.png" alt="Ablação família"></div>
+          </div>
+          <div class="takeaway-bar">Ablação: zerar em z-score (0 = μ<sub>treino</sub>) · família <code>worst_*</code> domina (ΔCE ≈ 0,11)</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="4 · Interpretabilidade">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Ablação por atributo-base</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/ablation_attribute_ce.png" alt="Ablação atributo"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>Zeramos as 3 colunas de cada atributo (<code>mean</code>, <code>error</code>, <code>worst</code>) de uma vez</li>
+              <li><strong>texture</strong> lidera em ΔCE, mas nem sempre coincide com o ranking por gradiente</li>
+              <li>Confirma: medidas extremas (<code>worst_*</code>) e forma (concavidade) importam</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="4 · Interpretabilidade">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 4</span>
+          <h2>Casos individuais · gradient × input</h2>
+        </header>
+        <div class="slide-body fill three-up">
+          <div class="case-card ok">
+            <div class="case-head">#0 · B→B · P(M)=0.40</div>
+            <div class="fig-main"><img src="../figures/waterfall_patient_0.png" alt="Paciente 0"></div>
+          </div>
+          <div class="case-card ok">
+            <div class="case-head">#2 · M→M · P(M)=0.99</div>
+            <div class="fig-main"><img src="../figures/waterfall_patient_2.png" alt="Paciente 2"></div>
+          </div>
+          <div class="case-card err">
+            <div class="case-head">#39 · B→M · FP · P(M)=0.60</div>
+            <div class="fig-main"><img src="../figures/waterfall_patient_39.png" alt="Paciente 39"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BLOCO 5 -->
+    <section class="slide" data-block="5 · Extras">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 5</span>
+          <h2>He initialization &amp; momentum</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/optimizer_training_curves.png" alt="He e momentum"></div>
+          <aside class="takeaway-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li><strong>batch=32</strong> só para visualizar curvas (final usa batch=8)</li>
+              <li>He + momentum quebram platô 62.7% em ~2 ep vs ~27 (base)</li>
+              <li>Val final similar (~96 a 98%): o ganho é <strong>velocidade</strong>, não acurácia máxima</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="5 · Extras">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 5</span>
+          <h2>NumPy manual vs sklearn MLPClassifier</h2>
+        </header>
+        <div class="slide-body fill" style="align-content:start">
+          <div class="compare-grid">
+            <div class="compare-box">
+              <h3>Nosso NumPy</h3>
+              <ul class="bullets compact">
+                <li>Init manual <code>N(0, 0.01)</code></li>
+                <li><strong>SGD</strong> (Stochastic Gradient Descent): atualiza pesos com gradiente de mini-batches</li>
+                <li>Backprop, Softmax e CE implementados à mão</li>
+              </ul>
+            </div>
+            <div class="compare-box sklearn">
+              <h3>sklearn MLPClassifier</h3>
+              <ul class="bullets compact">
+                <li>Init <strong>Glorot uniform</strong> (padrão interno, diferente do nosso)</li>
+                <li>Mesmo solver <code>sgd</code>, lr=0.01, batch=8, ReLU, 37 épocas</li>
+                <li>Código otimizado em C; ordem numérica dos updates pode variar</li>
+              </ul>
+            </div>
+          </div>
+          <div class="sklearn-lower">
+            <div class="table-wrap">
+              <table class="mini-table">
+                <thead><tr><th>Model</th><th>Train acc</th><th>Test acc</th></tr></thead>
+                <tbody>
+                  <tr><td>NumPy manual</td><td>0.987</td><td><strong>0.974</strong></td></tr>
+                  <tr><td>sklearn</td><td>0.989</td><td><strong>0.974</strong></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="sklearn-takeaways">
+              <ul class="bullets compact">
+                <li>Mesma arquitetura e hiperparâmetros; no <strong>teste</strong> as duas coincidem em <strong>97,4%</strong>, validando nosso código</li>
+                <li>Train do sklearn ~0,2 pp acima: init <strong>Glorot</strong> e otimização interna em C</li>
+                <li>Isso não indica melhor generalização, só diferenças de implementação numérica</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="5 · Extras">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 5</span>
+          <h2>SHAP · complemento</h2>
+        </header>
+        <div class="slide-body fill fig-slide">
+          <div class="fig-main"><img src="../figures/shap_summary.png" alt="SHAP"></div>
+          <aside class="takeaway-panel accent-panel">
+            <p class="takeaway-title">Takeaway</p>
+            <ul class="bullets compact">
+              <li>SHAP: impacto em P(maligno) por feature (modelo-agnóstico)</li>
+              <li>Concorda em <code>worst_*</code>, radius, concavidade</li>
+              <li><strong>Discordâncias</strong> com gradiente/ablação são esperadas entre métodos diferentes</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-block="5 · Discussão">
+      <div class="slide-grid">
+        <header class="slide-header">
+          <span class="block-tag">Bloco 5</span>
+          <h2>Limitações &amp; discussão crítica</h2>
+        </header>
+        <div class="slide-body bullets-centered fill">
+          <ul class="bullets">
+            <li><strong>Test set pequeno</strong> (115 amostras): acurácia em passos de ~0,87%; o resultado pode oscilar com poucas mudanças</li>
+            <li><strong>Ablação por accuracy</strong> quase não discrimina aqui; usamos <strong>ΔCE</strong> e queda de confiança</li>
+            <li><strong>Discordância entre métodos:</strong> gradientes, ablação e SHAP nem sempre ranqueiam as mesmas features</li>
+            <li><strong>Protocolo:</strong> hiperparâmetros na validação e teste usado uma vez; ainda há variância de sorte</li>
+            <li><strong>Clínica:</strong> features tabulares (anos 90), não imagem; não substitui avaliação médica completa</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide title-slide" data-block="">
+      <p class="course">Obrigado</p>
+      <h1>Perguntas?</h1>
+      <p class="subtitle" style="margin-top:1rem">breast-cancer-nn · notebook + relatório · MC906 TP3</p>
+      <div class="metrics" style="margin-top:2rem;max-width:640px;width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:0.65rem">
+        <div class="metric"><div class="val">97.4%</div><div class="lbl">test acc</div></div>
+        <div class="metric"><div class="val">[30,16,2]</div><div class="lbl">best arch</div></div>
+        <div class="metric"><div class="val">NumPy</div><div class="lbl">zero DL libs</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="slide-counter" id="counter">1 / 28</div>
+  <div class="nav-hint"><kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> · <kbd>F</kbd> fullscreen · <kbd>P</kbd> PDF</div>
+  <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const counter = document.getElementById("counter");
+      const progress = document.getElementById("progress");
+      let index = 0;
+
+      function go(n) {
+        slides[index].classList.remove("active");
+        index = Math.max(0, Math.min(slides.length - 1, n));
+        slides[index].classList.add("active");
+        counter.textContent = (index + 1) + " / " + slides.length;
+        progress.style.width = ((index + 1) / slides.length * 100) + "%";
+        document.title = (slides[index].dataset.block ? slides[index].dataset.block + " · " : "") + "TP3 MC906";
+      }
+
+      function next() { go(index + 1); }
+      function prev() { go(index - 1); }
+
+      function toggleFullscreen() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const enter = el.requestFullscreen || el.webkitRequestFullscreen;
+          if (enter) enter.call(el);
+        } else {
+          const exit = document.exitFullscreen || document.webkitExitFullscreen;
+          if (exit) exit.call(document);
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "f" || e.key === "F") {
+          e.preventDefault();
+          toggleFullscreen();
+          return;
+        }
+        if (e.key === "p" || e.key === "P") {
+          e.preventDefault();
+          window.print();
+          return;
+        }
+        if (["ArrowRight", " ", "PageDown"].includes(e.key)) { e.preventDefault(); next(); }
+        else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); prev(); }
+        else if (e.key === "Home") { e.preventDefault(); go(0); }
+        else if (e.key === "End") { e.preventDefault(); go(slides.length - 1); }
+      });
+
+      let touchX = null;
+      document.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].screenX; }, { passive: true });
+      document.addEventListener("touchend", (e) => {
+        if (touchX === null) return;
+        const dx = e.changedTouches[0].screenX - touchX;
+        if (Math.abs(dx) > 50) (dx < 0 ? next : prev)();
+        touchX = null;
+      }, { passive: true });
+
+      document.getElementById("deck").addEventListener("click", (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        (e.clientX - r.left) > r.width / 2 ? next() : prev();
+      });
+
+      go(0);
+    })();
+  </script>
+</body>
+</html>
