@@ -838,15 +838,17 @@
             <div class="metric"><div class="val">569</div><div class="lbl">amostras</div></div>
             <div class="metric"><div class="val">30</div><div class="lbl">features</div></div>
             <div class="metric"><div class="val">62.7%</div><div class="lbl">classe B</div></div>
-            <div class="metric"><div class="val" style="font-size:clamp(1.1rem,2.2vw,1.45rem)">64·16·20%</div><div class="lbl">363·91·115</div></div>
+            <div class="metric"><div class="val" style="font-size:clamp(1rem,2vw,1.35rem)">64%/16%/20%</div><div class="lbl">363/91/115</div></div>
           </div>
           <div class="takeaway-panel">
             <p class="takeaway-title">Pipeline</p>
             <ul class="bullets compact">
-              <li><strong>Split:</strong> treino 363 (64%) · val 91 (16%) · teste 115 (20%)</li>
+              <li><strong>Split:</strong> 363/91/115 amostras (64%/16%/20% treino/val/teste)</li>
               <li>Labels: <strong>B=0</strong>, <strong>M=1</strong> (invertemos o sklearn)</li>
               <li>Z-score: μ e σ <em>só do treino</em></li>
-              <li>One-hot no treino · HP na <strong>validation</strong>; teste <strong>uma vez</strong> no final</li>
+              <li><strong>Treino:</strong> labels em one-hot (B = [1, 0]; M = [0, 1]) para Softmax + CE</li>
+              <li><strong>Seleção de hiperparâmetros:</strong> só validação (16%)</li>
+              <li><strong>Teste (20%):</strong> avaliado uma única vez no final</li>
             </ul>
           </div>
         </div>
