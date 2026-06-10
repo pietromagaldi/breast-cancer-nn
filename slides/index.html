@@ -458,6 +458,28 @@
       margin-bottom: 1rem;
     }
 
+    .closing-slide {
+      justify-content: center;
+      gap: clamp(2rem, 5vh, 3.5rem);
+    }
+
+    .closing-slide .thanks {
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 14vw, 8rem);
+      font-weight: 400;
+      color: var(--ink);
+      line-height: 1;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .closing-metrics {
+      margin-top: 0;
+      max-width: 720px;
+      width: 100%;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
     .authors {
       margin-top: 1.5rem;
       font-size: clamp(0.8rem, 1.4vw, 0.95rem);
@@ -650,33 +672,42 @@
       color: var(--teal-dark);
     }
 
-    /* Exportar PDF: tecla P ou Arquivo → Imprimir → Salvar como PDF (paisagem) */
+    /* Exportar PDF: tecla P ou Cmd+P → Salvar como PDF (paisagem, escala 100%) */
     @media print {
       @page {
-        size: landscape;
+        size: 297mm 210mm;
         margin: 8mm;
       }
 
+      :root {
+        --header-h: 30mm;
+        --print-page-h: 194mm;
+      }
+
       html, body {
+        width: 100%;
         height: auto;
+        margin: 0;
+        padding: 0;
         overflow: visible;
         background: #fff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
 
-      body::before { display: none; }
+      body::before { display: none !important; }
 
       .nav-hint,
       .slide-counter,
       .progress-wrap { display: none !important; }
 
       .deck {
-        position: static;
-        width: 100%;
-        height: auto;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
       }
 
+      /* Exatamente 1 slide = 1 página (evita 28 → 47 páginas) */
       .slide {
         position: relative !important;
         opacity: 1 !important;
@@ -684,45 +715,134 @@
         transform: none !important;
         display: block !important;
         width: 100% !important;
-        height: auto !important;
-        min-height: 185mm;
+        height: var(--print-page-h) !important;
+        max-height: var(--print-page-h) !important;
+        min-height: var(--print-page-h) !important;
+        overflow: hidden !important;
         page-break-after: always;
         break-after: page;
-        overflow: visible !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
         background: var(--bg-slide) !important;
+        box-sizing: border-box;
       }
 
       .slide:last-child {
-        page-break-after: auto;
-        break-after: auto;
+        page-break-after: avoid;
+        break-after: avoid;
       }
 
       .slide-grid {
-        height: auto;
-        min-height: 175mm;
+        display: grid !important;
+        grid-template-rows: var(--header-h) 1fr !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
+        padding: 5mm 9mm 4mm !important;
+        gap: 3mm !important;
+        box-sizing: border-box;
       }
 
       .slide.title-slide {
-        min-height: 185mm;
-        padding: 2rem;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 10mm !important;
       }
 
-      .slide-body,
-      .slide-body.fill,
-      .fig-main,
-      .takeaway-panel {
-        overflow: visible !important;
+      .slide-header {
+        flex-shrink: 0;
+        padding-bottom: 0.35rem !important;
       }
 
-      .fig-main img {
-        max-height: 105mm;
+      .slide-header h2 {
+        font-size: 1.35rem !important;
+      }
+
+      .subtitle {
+        font-size: 0.85rem !important;
+      }
+
+      .slide-body {
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .slide-body.fill {
+        display: grid !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .two-col,
+      .fig-slide {
+        grid-template-columns: 1fr 1fr !important;
+      }
+
+      .fig-slide {
+        grid-template-columns: 1.12fr 0.88fr !important;
       }
 
       .three-up {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, 1fr) !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .bullet-grid.cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+      .bullet-grid.cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+      .compare-grid { grid-template-columns: 1fr 1fr !important; }
+
+      .fig-main {
+        min-height: 0 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+
+      .fig-main img {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: 100% !important;
+        object-fit: contain !important;
+      }
+
+      .takeaway-panel,
+      .eq-block,
+      .case-card {
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .case-card {
+        display: flex !important;
+        flex-direction: column !important;
+      }
+
+      .case-card .fig-main {
+        flex: 1 1 auto !important;
+      }
+
+      .takeaway-bar {
+        flex-shrink: 0;
+        font-size: 0.78rem !important;
+        padding: 0.45rem 0.75rem !important;
       }
 
       .agenda-rows { max-width: 100%; }
+
+      .closing-slide .thanks {
+        font-size: 4.5rem !important;
+      }
+
+      .closing-metrics {
+        max-width: 620px !important;
+      }
     }
   </style>
 </head>
@@ -1333,11 +1453,9 @@
       </div>
     </section>
 
-    <section class="slide title-slide" data-block="">
-      <p class="course">Obrigado</p>
-      <h1>Perguntas?</h1>
-      <p class="subtitle" style="margin-top:1rem">breast-cancer-nn · notebook + relatório · MC906 TP3</p>
-      <div class="metrics" style="margin-top:2rem;max-width:640px;width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:0.65rem">
+    <section class="slide title-slide closing-slide" data-block="">
+      <h1 class="thanks">Obrigado</h1>
+      <div class="metrics closing-metrics">
         <div class="metric"><div class="val">97.4%</div><div class="lbl">test acc</div></div>
         <div class="metric"><div class="val">[30,16,2]</div><div class="lbl">best arch</div></div>
         <div class="metric"><div class="val">NumPy</div><div class="lbl">zero DL libs</div></div>
